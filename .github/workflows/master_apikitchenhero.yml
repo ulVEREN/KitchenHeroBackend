@@ -28,10 +28,10 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir deploy
-          cp -r * deploy
-          cp -r .env deploy/ # Sikrer at miljøvariabler lastes inn
-          rm -rf deploy/node_modules # Fjern unødvendige filer
-          zip -r release.zip deploy
+          rsync -av --progress . deploy --exclude deploy --exclude node_modules --exclude .git
+          cp .env deploy/ || true  # Kopierer .env om den finnes
+          cd deploy
+          zip -r ../release.zip .
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -62,7 +62,7 @@ jobs:
         run: |
           cd deploy
           npm ci --omit=dev # Installer kun prod-avhengigheter
-          
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
