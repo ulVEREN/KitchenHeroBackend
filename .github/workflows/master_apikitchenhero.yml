@@ -3,38 +3,43 @@ name: Deploy to Azure Web App
 on:
   push:
     branches:
-      - master
-  workflow_dispatch:
+      - main  # 🚀 Endre hvis du bruker en annen branch
+
+permissions:
+  id-token: write  # ✅ Kreves for Azure OIDC-autentisering
+  contents: read
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 🛎️ Sjekker ut koden
-      uses: actions/checkout@v4
+      - name: 📥 Sjekk ut koden fra GitHub
+        uses: actions/checkout@v4
 
-    - name: 🔑 Logger inn i Azure med Service Principal
-      uses: azure/login@v1
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        allow-no-subscriptions: true
+      - name: 🔐 Logg inn på Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: false
+          auth-type: ID_TOKEN
 
-    - name: ⚡ Setter opp Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
+      - name: 📦 Sett opp Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20  # ✅ Bruker Node.js 20 som er konfigurert i Azure
+          cache: 'npm'
 
-    - name: 📦 Installerer avhengigheter
-      run: npm install
+      - name: 📥 Installer avhengigheter
+        run: npm install
 
-    - name: 🚀 Deploy til Azure Web App
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: "apikitchenhero"
-        package: ./
+      - name: 🚀 Bygg applikasjonen
+        run: npm run build
 
-    - name: 🔐 Logger ut av Azure
-      run: az logout
+      - name: 📤 Deploy til Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: apikitchenhero  # ✅ Endre hvis app-navnet er forskjellig
+          package: .  # 📁 Deploy hele prosjektet fra root-mappen
