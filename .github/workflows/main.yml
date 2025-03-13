@@ -1,72 +1,45 @@
-name: Build and deploy Node.js backend to Azure Web App - apikitchenhero
+name: Deploy to Azure Web App
 
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - main  # 🚀 Endre hvis du bruker en annen branch
+
+permissions:
+  id-token: write  # ✅ Kreves for Azure OIDC-autentisering
+  contents: read
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read # Kreves for actions/checkout
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Sjekk ut koden fra GitHub
         uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      - name: 🔐 Logg inn på Azure
+        uses: azure/login@v1
         with:
-          node-version: '20.x'
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: false
+          auth-type: ID_TOKEN
+
+      - name: 📦 Sett opp Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20  # ✅ Bruker Node.js 20 som er konfigurert i Azure
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci  # Bruker ci for raskere og mer stabil installasjon i CI/CD
+      - name: 📥 Installer avhengigheter
+        run: npm install
 
-      - name: Run tests (optional)
-        run: npm test --if-present
+      - name: 🚀 Bygg applikasjonen
+        run: npm run build
 
-      - name: Create deployment package
-        run: zip -r release.zip . -x "node_modules/*"
-
-      - name: Upload artifact for deployment
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-backend
-          path: release.zip
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write # Kreves for Azure JWT-autentisering
-      contents: read 
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: node-backend
-
-      - name: Unzip artifact
-        run: unzip release.zip
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
+      - name: 📤 Deploy til Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'apikitchenhero'
-          slot-name: 'Production'
-          package: .
+          app-name: apikitchenhero  # ✅ Endre hvis app-navnet er forskjellig
+          package: .  # 📁 Deploy hele prosjektet fra root-mappen
