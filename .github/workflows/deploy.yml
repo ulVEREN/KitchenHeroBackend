@@ -1,10 +1,9 @@
-name: Deploy Backend to Azure Web App
+name: Deploy to Azure Web App
 
 on:
   push:
     branches:
-      - main  # 🚀 Trigger deploy når du pusher til main
-  workflow_dispatch:  # ✅ Lar deg starte workflowen manuelt fra Actions-fanen
+      - main  # 🚀 Endre hvis du bruker en annen branch
 
 permissions:
   id-token: write  # ✅ Kreves for Azure OIDC-autentisering
@@ -33,17 +32,12 @@ jobs:
 
       - name: 📥 Installer avhengigheter
         run: npm install
-        working-directory: backend  # ✅ Hvis backend ligger i en egen mappe, endre dette
 
       - name: 🚀 Bygg applikasjonen
         run: npm run build
-        working-directory: backend  # ✅ Bygg backend (kan fjerne hvis ikke nødvendig)
-
-      - name: 🔍 Kopier miljøvariabler til Azure
-        run: echo "${{ secrets.ENV_FILE }}" > backend/.env  # ✅ Bruker GitHub Secrets for miljøvariabler
 
       - name: 📤 Deploy til Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: apikitchenhero  # ✅ Endre hvis app-navnet er forskjellig
-          package: backend  # 📁 Sikrer at riktig mappe deployes (endre hvis backend ikke har egen mappe)
+          package: .  # 📁 Deploy hele prosjektet fra root-mappen
