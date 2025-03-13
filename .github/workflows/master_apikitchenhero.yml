@@ -41,5 +41,5 @@ jobs:
       - name: 📤 Deploy til Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: apikitchenhero  # ✅ Endre hvis app-navnet er forskjellig.
+          app-name: apikitchenhero  # ✅ Endre hvis app-navnet er forskjellig
           package: .  # 📁 Deploy hele prosjektet fra root-mappen
