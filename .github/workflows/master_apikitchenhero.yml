@@ -3,8 +3,8 @@ name: Deploy to Azure Web App
 on:
   push:
     branches:
-      - master  # Endre til "main" hvis du bruker main branch
-  workflow_dispatch:  # Lar deg kjøre workflow manuelt fra GitHub Actions
+      - master
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -14,6 +14,14 @@ jobs:
     - name: 🛎️ Sjekker ut koden
       uses: actions/checkout@v4
 
+    - name: 🔑 Logger inn i Azure med Service Principal
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        allow-no-subscriptions: true
+
     - name: ⚡ Setter opp Node.js 20
       uses: actions/setup-node@v4
       with:
@@ -22,12 +30,11 @@ jobs:
     - name: 📦 Installerer avhengigheter
       run: npm install
 
-    - name: 🏗️ Bygger prosjektet (hvis nødvendig)
-      run: npm run build || echo "Ingen build script funnet"
-
     - name: 🚀 Deploy til Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: "apikitchenhero"  # ✅ Azure Web App-navn
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        app-name: "apikitchenhero"
         package: ./
+
+    - name: 🔐 Logger ut av Azure
+      run: az logout
