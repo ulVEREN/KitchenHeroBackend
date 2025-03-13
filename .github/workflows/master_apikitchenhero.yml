@@ -1,39 +1,45 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - apikitchenhero
+name: Build and deploy Node.js backend to Azure Web App - apikitchenhero
 
 on:
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read # Kreves for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
           node-version: '20.x'
+          cache: 'npm'
 
-      - name: npm install, build, and test
+      - name: Install dependencies
+        run: npm ci  # Raskere installasjon og unngår problemer med pakkeversjoner
+
+      - name: Run tests (optional)
+        run: npm test --if-present
+
+      - name: Create deployment package
         run: |
-          npm install
+          mkdir deploy
+          cp -r * deploy
+          cp -r .env deploy/ # Sikrer at miljøvariabler lastes inn
+          rm -rf deploy/node_modules # Fjern unødvendige filer
+          zip -r release.zip deploy
 
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
-
-      - name: Upload artifact for deployment job
+      - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
+          name: node-backend
           path: release.zip
 
   deploy:
@@ -43,30 +49,38 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write # Kreves for Azure JWT-autentisering
+      contents: read 
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: node-app
+          name: node-backend
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-      
+      - name: Unzip artifact
+        run: unzip release.zip -d deploy
+
+      - name: Install production dependencies
+        run: |
+          cd deploy
+          npm ci --omit=dev # Installer kun prod-avhengigheter
+          
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0839045DC7CA4A5C9FB1C895F7E1907D }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_F9ADC4BD285F4BEE9E5A45AA9B1A8B86 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_864DFF399FA94BAC813531454A8DF21A }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'apikitchenhero'
           slot-name: 'Production'
-          package: .
-          
+          package: ./deploy
+
+      - name: Restart Azure Web App
+        run: |
+          az webapp restart --name apikitchenhero --resource-group MyResourceGroup
